@@ -1,0 +1,227 @@
+#include<iostream>
+#include<fstream>
+#include<string>
+#include<iomanip>
+#include<conio.h>
+using namespace std;
+
+int n = 0, m = 0;
+int P, R;
+
+void callNeed(int need[][50], int max[][50], int alco[][50], int P, int R)
+{
+	for (int i = 0; i < P; i++)
+	{
+		for (int j = 0; j < R; j++)
+			need[i][j] = max[i][j] - alco[i][j];
+	}
+}
+
+void printNeed(int need[][50], int P, int R)
+{
+	//printing need
+	cout << "\nProcesses |";
+	for (int i = 0; i < R; i++)
+		cout << " Need R" << i << " ";
+	cout << endl;
+	for (int i = 0; i < P; i++)
+	{
+		cout << " P" << i << "       |";
+		for (int j = 0; j < R; j++)
+			cout << setw(7) << need[i][j] << " ";
+		cout << endl;
+	}
+}
+
+bool isSafe(int Pr[], int av[10], int max[][50], int alco[][50], int P, int R)
+{
+	int need[50][50];
+	callNeed(need, max, alco, P, R);
+	printNeed(need, P, R);
+	int count = 0;
+	bool finish[10] = { 0 };
+	int *safesq = new int[P];
+	//int *work= new int[P];
+	int work[50];
+	for (int i = 0; i < R; i++)
+		work[i] = av[i];
+
+	while (count < P)
+	{
+		bool found = false;
+		for (int i = 0; i < P; i++)
+		{
+			if (!finish[i])
+			{
+				int j;
+				for (j = 0; j < R; j++)
+				{
+					if (need[i][j] > work[j])
+						break;
+				}
+				if (j == R)
+				{
+					for (int k = 0; k < R; k++)
+					{
+						work[k] = work[k] + alco[i][k];
+					}
+					safesq[count++] = Pr[i];
+					finish[i] = true;
+					found = true;
+				}
+			}
+		}
+		if (!found)
+		{
+			cout << "\nsystem is not in safe state.\n";
+			return false;
+		}
+	}
+	cout << "\nsystem is in safe state.\n\nSafe Sequence is: ";
+	for (int i = 0; i < P; i++)
+		cout << "P" << safesq[i] << " ";
+	//cout << endl;
+	return true;
+}
+
+bool RequestResource(int Pid, int request[], int av[], int max[][50], int alco[][50], int P, int R, int Pr[])
+{
+	int cond1 = 0, cond2 = 0;
+	int need[50][50];
+	callNeed(need, max, alco, P, R);
+
+	for (int i = 0; i < R; i++)
+	{
+		if (request[i] <= need[Pid][i])
+		{
+			cond1++;
+			if (request[i] <= av[i])
+			{
+				av[i] -= request[i];
+				alco[Pid][i] += request[i];
+				need[Pid][i] -= request[i];
+				cond2++;
+			}
+		}
+	}
+	if (cond1 == R)
+	{
+
+		if (cond2 == R)
+		{
+			bool safe = isSafe(Pr, av, max, alco, P, R);
+			if (!safe)
+			{
+				for (int i = 0; i < R; i++)
+				{
+					av[i] += request[i];
+					alco[Pid][i] -= request[i];
+				}
+			}
+			return safe;
+		}
+		else
+		{
+			cout << "\nResource are not Available.";
+			return false;
+		}
+	}
+	else
+	{
+		cout << "\nprocess " << Pid << " has exceeded its maximun claim.";
+		return false;
+	}
+}
+
+void main()
+{
+	int Pr[50];
+	int alco[50][50], max[50][50];
+
+	ifstream infile("data.txt");
+	if (!infile)
+	{
+		cout << "no file";
+		return;
+	}
+	infile >> P >> R;
+
+	for (int i = 0; i < P; i++)
+		Pr[i] = i;
+
+	int* av = new int[R];
+	string line;
+	while (getline(infile, line))
+	{
+		if (line.find("Available:") != string::npos)
+			break;
+	}
+	for (int i = 0; i < R; i++)
+		infile >> av[i];
+
+	while (getline(infile, line))
+	{
+		if (line.find("Allocate:") != string::npos)
+			break;
+	}
+	for (int i = 0; i < P; i++)
+	{
+		for (int j = 0; j < R; j++)
+			infile >> alco[i][j];
+	}
+
+	while (getline(infile, line))
+	{
+		if (line.find("Max:") != string::npos)
+			break;
+	}
+	for (int i = 0; i < P; i++)
+	{
+		for (int j = 0; j < R; j++)
+			infile >> max[i][j];
+	}
+	infile.close();
+
+	cout << "\n==============Inputs==================\n";
+	cout << "Processes: " << P;
+	cout << "\nResources: " << R;
+	cout << endl;
+	cout << "Processes |";
+	for (int i = 0; i < R; i++)
+		cout << " Max R" << i << " ";
+	cout << "|";
+	for (int i = 0; i < R; i++)
+		cout << " Alloct R" << i << " ";
+	cout << endl;
+	for (int i = 0; i < P; i++)
+	{
+		cout << " P" << i << "       |";
+		for (int j = 0; j < R; j++)
+			cout << setw(7) << max[i][j] << " ";
+		cout << "|";
+		for (int j = 0; j < R; j++)
+			cout << setw(7) << alco[i][j] << " ";
+		cout << endl;
+	}
+	cout << "\n==============Outputs==================\n";
+	isSafe(Pr, av, max, alco, P, R);
+
+	//Handling a resource request
+	int Pid;
+	int request[50];
+
+	cout << "\nEnter the process ID making the request: ";
+	cin >> Pid;
+
+	cout << "Enter the Requested resource: ";
+	for (int i = 0; i < R; i++)
+		cin >> request[i];
+
+	if (RequestResource(Pid, request, av, max, alco, P, R, Pr)) {
+		cout << "\n\nRequest can be granted safely.\n";
+	}
+	else {
+		cout << "\n\nRequest cannot be granted as it would leave the system in an unsafe state.\n";
+	}
+	_getch();
+}
